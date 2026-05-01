@@ -172,18 +172,20 @@ router.post('/postex/create-order', async (req, res) => {
           invoicePayment,
           orderDetail:       orderDetail       || '',
           orderRefNumber,
+          orderType:         'Normal',
           pickupAddressCode: pickupAddressCode || '',
         }),
       }
     )
 
     const result = await response.json().catch(() => ({}))
+    console.log('[Postex] status:', response.status, 'body:', JSON.stringify(result))
 
     if (result.statusCode === '200') {
       return res.json({
-        success:       true,
+        success:        true,
         trackingNumber: result.dist?.trackingNumber,
-        data:          result.dist,
+        data:           result.dist,
       })
     }
 
