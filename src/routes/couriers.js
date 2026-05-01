@@ -57,18 +57,7 @@ router.post('/postex/verify', async (req, res) => {
     if (!user) return
 
     const { apiToken } = req.body
-    // Decode if token was Base64 encoded by browser
-    let rawToken = apiToken?.trim() || ''
-    try {
-      const decoded = Buffer.from(rawToken, 'base64').toString('utf8')
-      // If decoded is valid hex/alphanumeric (looks like a real token), use it
-      if (decoded && /^[a-f0-9]{10,}$/i.test(decoded)) {
-        rawToken = decoded
-      }
-    } catch { /* use rawToken as-is */ }
-    console.log('[Postex Verify] apiToken received:', apiToken ? apiToken.substring(0, 20) + '...' : 'EMPTY')
-    console.log('[Postex Verify] rawToken (decoded):', rawToken ? rawToken.substring(0, 20) + '...' : 'EMPTY')
-    if (!rawToken) {
+    if (!apiToken?.trim()) {
       return res.status(400).json({ error: 'API token is required' })
     }
 
@@ -78,33 +67,29 @@ router.post('/postex/verify', async (req, res) => {
 
     try {
       const response = await fetch(
-        'https://api.postex.pk/services/integration/api/order/v1/get-operational-cities',
+        'https://api.postex.pk/services/integration/api/order/v2/get-operational-city',
         {
           method:  'GET',
-          headers: { token: rawToken },
+          headers: { token: apiToken.trim() },
           signal:  controller.signal,
         }
       )
       clearTimeout(timer)
 
       const result = await response.json().catch(() => ({}))
-      console.log('[Postex Verify] response status:', response.status, 'result:', JSON.stringify(result))
+      console.log('[Postex Verify] status:', response.status, 'result:', JSON.stringify(result))
 
       if (response.status === 200 && result.statusCode === '200') {
         return res.json({ connected: true, message: 'Postex connected successfully' })
       }
 
-      if (response.status === 401 || result.statusCode !== '200') {
-        return res.json({ connected: false, error: 'Invalid API token — check your Postex credentials' })
-      }
-
-      return res.json({ connected: false, error: `Unexpected response from Postex (${response.status})` })
+      return res.json({ connected: false, error: 'Invalid API token — check your Postex credentials' })
     } catch (err) {
       clearTimeout(timer)
       if (err.name === 'AbortError') {
         return res.json({ connected: false, error: 'Could not reach Postex servers — check your internet connection' })
       }
-      return res.json({ connected: false, error: 'Could not reach Postex servers — check your internet connection' })
+      return res.json({ connected: false, error: 'Could not reach Postex servers: ' + err.message })
     }
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -172,7 +157,7 @@ router.post('/postex/create-order', async (req, res) => {
     const fetch = (await import('node-fetch')).default
 
     const response = await fetch(
-      'https://api.postex.pk/services/integration/api/order/v2/create-order',
+      'https://api.postex.pk/services/integration/api/order/v3/create-order',
       {
         method:  'POST',
         headers: {
@@ -223,7 +208,7 @@ router.get('/postex/track/:trackingNumber', async (req, res) => {
     const fetch = (await import('node-fetch')).default
 
     const response = await fetch(
-      `https://api.postex.pk/services/integration/api/order/v1/get-order-tracking?trackingNumber=${encodeURIComponent(trackingNumber)}`,
+      `https://api.postex.pk/services/integration/api/order/v1/track-order/${encodeURIComponent(trackingNumber)}`,
       {
         method:  'GET',
         headers: { token: apiToken || '' },
