@@ -4,7 +4,15 @@ require('dotenv').config()
 
 const app = express()
 
-app.use(cors())
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://cashflow-pk.vercel.app',
+    'https://cashflow.pk',
+    'https://www.cashflow.pk',
+  ],
+  credentials: true,
+}))
 app.use(express.json())
 
 // ── Routes ────────────────────────────────────────────────────
