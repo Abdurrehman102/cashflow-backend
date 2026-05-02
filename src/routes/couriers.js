@@ -229,4 +229,156 @@ router.get('/postex/track/:trackingNumber', async (req, res) => {
   }
 })
 
+// ── GET /couriers/postex/cities ──────────────────────────────
+router.get('/postex/cities', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req, res)
+    if (!user) return
+
+    const { apiToken } = req.query
+    if (!apiToken?.trim()) return res.status(400).json({ error: 'API token is required' })
+
+    const fetch = (await import('node-fetch')).default
+    const response = await fetch(
+      'https://api.postex.pk/services/integration/api/order/v2/get-operational-city',
+      { method: 'GET', headers: { token: apiToken.trim() } }
+    )
+    const result = await response.json().catch(() => ({}))
+
+    if (result.statusCode === '200') {
+      return res.json({ cities: result.dist || [] })
+    }
+    return res.json({ cities: [], error: result.statusMessage || 'Could not fetch cities' })
+  } catch (err) {
+    res.json({ cities: [], error: err.message })
+  }
+})
+
+// ── POST /couriers/bookings/save ──────────────────────────────
+router.post('/bookings/save', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req, res)
+    if (!user) return
+
+    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single()
+    const org_id = profile?.org_id
+    if (!org_id) return res.status(404).json({ error: 'Organization not found' })
+
+    const {
+      tracking_number, courier_slug, order_ref,
+      recipient_name, recipient_phone, recipient_city, recipient_address,
+      weight, cod_amount, pieces, postex_data, store_id,
+    } = req.body
+
+    const { data, error } = await supabase
+      .from('courier_bookings')
+      .insert({
+        org_id,
+        store_id:         store_id || null,
+        tracking_number,
+        courier_slug,
+        order_ref,
+        recipient_name,
+        recipient_phone,
+        recipient_city,
+        recipient_address,
+        weight:           weight    || null,
+        cod_amount:       cod_amount || 0,
+        pieces:           pieces    || 1,
+        status:           'pending',
+        postex_data:      postex_data || null,
+      })
+      .select()
+      .single()
+
+    if (error) return res.status(500).json({ error: error.message })
+    return res.json({ success: true, booking: data })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── GET /couriers/bookings ────────────────────────────────────
+router.get('/bookings', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req, res)
+    if (!user) return
+
+    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single()
+    const org_id = profile?.org_id
+    if (!org_id) return res.status(404).json({ error: 'Organization not found' })
+
+    const page     = parseInt(req.query.page)     || 1
+    const per_page = parseInt(req.query.per_page) || 50
+    const courier  = req.query.courier
+    const status   = req.query.status
+    const search   = req.query.search
+
+    const from = (page - 1) * per_page
+    const to   = from + per_page - 1
+
+    let query = supabase
+      .from('courier_bookings')
+      .select('*', { count: 'exact' })
+      .eq('org_id', org_id)
+      .order('created_at', { ascending: false })
+      .range(from, to)
+
+    if (courier) query = query.eq('courier_slug', courier)
+    if (status)  query = query.eq('status', status)
+    if (search)  query = query.or(`tracking_number.ilike.%${search}%,recipient_name.ilike.%${search}%`)
+
+    const { data: bookings, count, error } = await query
+    if (error) return res.status(500).json({ error: error.message })
+
+    return res.json({ bookings, total: count, page, per_page })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── POST /couriers/bookings/bulk-save ────────────────────────
+router.post('/bookings/bulk-save', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req, res)
+    if (!user) return
+
+    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single()
+    const org_id = profile?.org_id
+    if (!org_id) return res.status(404).json({ error: 'Organization not found' })
+
+    const { bookings } = req.body
+    if (!Array.isArray(bookings) || bookings.length === 0) {
+      return res.status(400).json({ error: 'bookings array is required' })
+    }
+
+    const rows = bookings.map(b => ({
+      org_id,
+      store_id:         b.store_id         || null,
+      tracking_number:  b.tracking_number  || null,
+      courier_slug:     b.courier_slug     || 'postex',
+      order_ref:        b.order_ref        || null,
+      recipient_name:   b.recipient_name   || null,
+      recipient_phone:  b.recipient_phone  || null,
+      recipient_city:   b.recipient_city   || null,
+      recipient_address:b.recipient_address|| null,
+      weight:           b.weight           || null,
+      cod_amount:       b.cod_amount       || 0,
+      pieces:           b.pieces           || 1,
+      status:           b.status           || 'pending',
+      postex_data:      b.postex_data      || null,
+    }))
+
+    const { data, error } = await supabase
+      .from('courier_bookings')
+      .insert(rows)
+      .select()
+
+    if (error) return res.status(500).json({ error: error.message })
+    return res.json({ success: true, saved: data.length, bookings: data })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 module.exports = router
