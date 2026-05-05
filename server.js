@@ -16,13 +16,15 @@ app.use(cors({
 app.use(express.json())
 
 // ── Routes ────────────────────────────────────────────────────
-const authRoutes    = require('./src/routes/auth')
-const storesRouter  = require('./src/routes/stores')
-const couriersRouter = require('./src/routes/couriers')
+const authRoutes      = require('./src/routes/auth')
+const storesRouter    = require('./src/routes/stores')
+const couriersRouter  = require('./src/routes/couriers')
+const inventoryRouter = require('./src/routes/inventory')
 
-app.use('/auth',     authRoutes)
-app.use('/stores',   storesRouter)
-app.use('/couriers', couriersRouter)
+app.use('/auth',      authRoutes)
+app.use('/stores',    storesRouter)
+app.use('/couriers',  couriersRouter)
+app.use('/',          inventoryRouter)   // /stores/:storeId/products + /stores/:storeId/sync-products
 
 app.get('/', (req, res) => {
   res.json({ message: 'CashFlow.pk API Running ✅' })
