@@ -267,14 +267,15 @@ router.post('/bookings/save', async (req, res) => {
     const {
       tracking_number, courier_slug, order_ref,
       recipient_name, recipient_phone, recipient_city, recipient_address,
-      weight, cod_amount, pieces, postex_data, store_id,
+      weight, cod_amount, cod_status, advance_amount, advance_status,
+      pieces, postex_data, store_id, shipping_date,
     } = req.body
 
     const { data, error } = await supabase
       .from('courier_bookings')
       .insert({
         org_id,
-        store_id:         store_id || null,
+        store_id:         store_id        || null,
         tracking_number,
         courier_slug,
         order_ref,
@@ -282,11 +283,16 @@ router.post('/bookings/save', async (req, res) => {
         recipient_phone,
         recipient_city,
         recipient_address,
-        weight:           weight    || null,
-        cod_amount:       cod_amount || 0,
-        pieces:           pieces    || 1,
+        weight:           weight          || null,
+        booking_date:     new Date().toISOString(),
+        shipping_date:    shipping_date   || null,
+        cod_amount:       cod_amount      || 0,
+        cod_status:       cod_status      || 'pending',
+        advance_amount:   advance_amount  || 0,
+        advance_status:   advance_status  || null,
+        pieces:           pieces          || 1,
         status:           'pending',
-        postex_data:      postex_data || null,
+        postex_data:      postex_data     || null,
       })
       .select()
       .single()
@@ -366,6 +372,7 @@ router.post('/bookings/bulk-save', async (req, res) => {
       cod_amount:       b.cod_amount       || 0,
       pieces:           b.pieces           || 1,
       status:           b.status           || 'pending',
+      booking_date:     new Date().toISOString(),
       postex_data:      b.postex_data      || null,
     }))
 
