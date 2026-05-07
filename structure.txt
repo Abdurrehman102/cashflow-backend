@@ -1,0 +1,22 @@
+﻿PROJECT: cashflow-backend
+DATE: 2026-05-06 22:41
+---
+[root]
++-- [prisma]
+|   +-- schema.prisma
++-- [src]
+|   +-- [couriers]
+|   |   +-- postex.service.js
+|   +-- [routes]
+|   |   +-- auth.js
+|   |   +-- couriers.js
+|   |   +-- inventory.js
+|   |   +-- stores.js
+|   +-- supabase.js
++-- .env
++-- .gitignore
++-- gen_struct.ps1
++-- package.json
++-- package-lock.json
++-- project-structure.bat
++-- server.js

@@ -24,7 +24,7 @@ const inventoryRouter = require('./src/routes/inventory')
 app.use('/auth',      authRoutes)
 app.use('/stores',    storesRouter)
 app.use('/couriers',  couriersRouter)
-app.use('/',          inventoryRouter)   // /stores/:storeId/products + /stores/:storeId/sync-products
+app.use('/',          inventoryRouter)   // /stores/:storeId/products + /image-proxy
 
 app.get('/', (req, res) => {
   res.json({ message: 'CashFlow.pk API Running ✅' })

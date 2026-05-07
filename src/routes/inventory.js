@@ -65,6 +65,24 @@ function normalizeProduct(p, org_id, store_id) {
   }
 }
 
+// ── GET /image-proxy — proxy WooCommerce images to avoid CORS ─
+router.get('/image-proxy', async (req, res) => {
+  try {
+    const { url } = req.query
+    if (!url) return res.status(400).json({ error: 'url required' })
+    const fetch = (await import('node-fetch')).default
+    const https = require('https')
+    const agent = new https.Agent({ rejectUnauthorized: false })
+    const imgRes = await fetch(url, { agent })
+    if (!imgRes.ok) return res.status(404).end()
+    res.set('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg')
+    res.set('Cache-Control', 'public, max-age=86400')
+    imgRes.body.pipe(res)
+  } catch (err) {
+    res.status(500).end()
+  }
+})
+
 // ── GET /stores/:storeId/products ─────────────────────────────
 // List products from DB with filters + pagination
 router.get('/stores/:storeId/products', async (req, res) => {
